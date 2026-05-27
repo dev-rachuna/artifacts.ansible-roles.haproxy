@@ -1,0 +1,28 @@
+---
+- name: "Restart haproxy (systemd)"
+  ansible.builtin.systemd:
+    name: "{{ var_haproxy_service_name }}"
+    state: restarted
+  listen: "Restart haproxy"
+  when: ansible_facts['service_mgr'] | default('') == 'systemd'
+
+- name: "Restart haproxy (non-systemd)"
+  ansible.builtin.service:
+    name: "{{ var_haproxy_service_name }}"
+    state: restarted
+  listen: "Restart haproxy"
+  when: ansible_facts['service_mgr'] | default('') != 'systemd'
+
+- name: "Reload haproxy (systemd)"
+  ansible.builtin.systemd:
+    name: "{{ var_haproxy_service_name }}"
+    state: reloaded
+  listen: "Reload haproxy"
+  when: ansible_facts['service_mgr'] | default('') == 'systemd'
+
+- name: "Reload haproxy (non-systemd)"
+  ansible.builtin.service:
+    name: "{{ var_haproxy_service_name }}"
+    state: reloaded
+  listen: "Reload haproxy"
+  when: ansible_facts['service_mgr'] | default('') != 'systemd'

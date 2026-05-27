@@ -1,0 +1,47 @@
+---
+- name: "Install haproxy"
+  ansible.builtin.package:
+    name: "{{ var_haproxy_package_name[ansible_facts['os_family']] }}"
+    state: present
+
+- name: "Ensure haproxy config directory exists"
+  ansible.builtin.file:
+    path: "{{ var_haproxy_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: "Ensure haproxy certs directory exists"
+  when: (in_haproxy.frontends | default([])) | selectattr('bind', 'search', 'ssl') | list | length > 0
+  ansible.builtin.file:
+    path: "{{ var_haproxy_certs_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: "Render haproxy.cfg"
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: "{{ var_haproxy_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "{{ var_haproxy_validate_cmd }}"
+  notify: "Reload haproxy"
+
+- name: "Enable and start haproxy (systemd)"
+  when:
+    - ansible_facts['service_mgr'] | default('') == 'systemd'
+  ansible.builtin.systemd:
+    name: "{{ var_haproxy_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: "Skip service management (no systemd)"
+  when:
+    - ansible_facts['service_mgr'] | default('') != 'systemd'
+  ansible.builtin.debug:
+    msg: "haproxy: installed/configured, but ansible_service_mgr={{ ansible_facts['service_mgr'] }} (skip enable/start)"

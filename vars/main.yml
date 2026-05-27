@@ -1,0 +1,12 @@
+---
+var_haproxy_service_name: haproxy
+var_haproxy_config_path: /etc/haproxy/haproxy.cfg
+var_haproxy_config_dir: /etc/haproxy
+var_haproxy_certs_dir: /etc/haproxy/certs
+var_haproxy_bin: /usr/sbin/haproxy
+var_haproxy_validate_cmd: "{{ var_haproxy_bin }} -c -f %s"
+
+var_haproxy_package_name:
+  Debian: haproxy
+  RedHat: haproxy
+  Alpine: haproxy
