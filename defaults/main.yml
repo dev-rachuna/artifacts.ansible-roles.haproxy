@@ -1,0 +1,75 @@
+---
+in_haproxy:
+
+  # Globalny tuning HAProxy.
+  global:
+    maxconn: 4096
+    log:
+      - "/dev/log local0"
+      - "/dev/log local1 notice"
+
+  # Domyślne ustawienia dla frontend/backend.
+  # mode jest respektowane — jeśli ustawisz tcp, sekcja defaults wyrenderuje mode tcp.
+  defaults:
+    mode: http
+    timeout_connect: "5s"
+    timeout_client: "50s"
+    timeout_server: "50s"
+    log: global
+    options:
+      - httplog
+      - dontlognull
+      - forwardfor
+
+  # Sekcja stats (opcjonalna).
+  # Ustaw enabled: false aby wyłączyć.
+  stats:
+    enabled: true
+    bind: "127.0.0.1:8404"
+    uri: "/stats"
+    refresh: "30s"
+    auth: ""
+
+  # Lista frontendów.
+  # Każdy element: name, bind, mode (http/tcp), default_backend
+  # Opcjonalne: acls (list), use_backends (list), options (list), extra_lines (list)
+  # ssl_cert - ścieżka do certyfikatu PEM (frontend HTTPS)
+  frontends: []
+  #  - name: http-in
+  #    bind: "*:80"
+  #    mode: http
+  #    default_backend: app_servers
+  #    options:
+  #      - httplog
+  #  - name: https-in
+  #    bind: "*:443 ssl crt /etc/haproxy/certs/site.pem"
+  #    mode: http
+  #    default_backend: app_servers
+  #    options:
+  #      - httplog
+
+  # Lista backendów.
+  # Każdy element: name, mode (http/tcp), balance, servers (list)
+  # Opcjonalne: options (list), http_check (dict), tcp_check (list), extra_lines (list)
+  # Każdy server: name, address, port, params (string, np. "check")
+  #
+  # http_check — nowoczesna składnia (HAProxy 2.4+):
+  #   send: "meth GET uri /health"
+  #   expect: "status 200"
+  #
+  # tcp_check — lista kroków tcp-check:
+  #   - "connect ssl"
+  #   - "send PING\\r\\n"
+  #   - "expect string +PONG"
+  backends: []
+  #  - name: app_servers
+  #    mode: http
+  #    balance: roundrobin
+  #    http_check:
+  #      send: "meth GET uri /health"
+  #      expect: "status 200"
+  #    servers:
+  #      - name: app1
+  #        address: 127.0.0.1
+  #        port: 8080
+  #        params: "check"

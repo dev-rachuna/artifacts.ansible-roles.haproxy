@@ -1,0 +1,92 @@
+{{ ansible_managed | comment }}
+
+{% set global = in_haproxy.global | default({}) %}
+{% set defaults = in_haproxy.defaults | default({}) %}
+
+global
+  maxconn {{ global.maxconn | default(4096) }}
+{% for log_entry in (global.log | default(['/dev/log local0', '/dev/log local1 notice'])) %}
+  log {{ log_entry }}
+{% endfor %}
+  daemon
+{% for line in (global.extra_lines | default([])) %}
+  {{ line }}
+{% endfor %}
+
+defaults
+  mode {{ defaults.mode | default('http') }}
+  log {{ defaults.log | default('global') }}
+  timeout connect {{ defaults.timeout_connect | default('5s') }}
+  timeout client {{ defaults.timeout_client | default('50s') }}
+  timeout server {{ defaults.timeout_server | default('50s') }}
+{% for opt in (defaults.options | default(['httplog', 'dontlognull', 'forwardfor'])) %}
+  option {{ opt }}
+{% endfor %}
+{% for line in (defaults.extra_lines | default([])) %}
+  {{ line }}
+{% endfor %}
+
+{% set stats = in_haproxy.stats | default({}) %}
+{% if stats.enabled | default(true) | bool %}
+listen stats
+  bind {{ stats.bind | default('127.0.0.1:8404') }}
+  mode http
+  stats enable
+  stats uri {{ stats.uri | default('/stats') }}
+  stats refresh {{ stats.refresh | default('30s') }}
+{% if (stats.auth | default('')) | length > 0 %}
+  stats auth {{ stats.auth }}
+{% endif %}
+
+{% endif %}
+{% for fe in (in_haproxy.frontends | default([])) %}
+frontend {{ fe.name }}
+  bind {{ fe.bind }}
+  mode {{ fe.mode | default('http') }}
+{% for opt in (fe.options | default([])) %}
+  option {{ opt }}
+{% endfor %}
+{% for acl in (fe.acls | default([])) %}
+  acl {{ acl }}
+{% endfor %}
+{% for ub in (fe.use_backends | default([])) %}
+  use_backend {{ ub }}
+{% endfor %}
+{% if fe.default_backend is defined %}
+  default_backend {{ fe.default_backend }}
+{% endif %}
+{% for line in (fe.extra_lines | default([])) %}
+  {{ line }}
+{% endfor %}
+
+{% endfor %}
+{% for be in (in_haproxy.backends | default([])) %}
+backend {{ be.name }}
+  mode {{ be.mode | default('http') }}
+  balance {{ be.balance | default('roundrobin') }}
+{% for opt in (be.options | default([])) %}
+  option {{ opt }}
+{% endfor %}
+{% if be.http_check is defined %}
+{% set hc = be.http_check %}
+{% if hc.send is defined %}
+  http-check send {{ hc.send }}
+{% endif %}
+{% if hc.expect is defined %}
+  http-check expect {{ hc.expect }}
+{% endif %}
+{% endif %}
+{% if be.tcp_check is defined %}
+  option tcp-check
+{% for step in (be.tcp_check | default([])) %}
+  tcp-check {{ step }}
+{% endfor %}
+{% endif %}
+{% for line in (be.extra_lines | default([])) %}
+  {{ line }}
+{% endfor %}
+{% for srv in (be.servers | default([])) %}
+  server {{ srv.name }} {{ srv.address }}:{{ srv.port }} {{ srv.params | default('') }}
+{% endfor %}
+
+{% endfor %}
